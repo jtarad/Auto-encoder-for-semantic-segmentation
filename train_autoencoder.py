@@ -26,6 +26,7 @@ INPUT_SIZE = '64,64'
 IGNORE_LABEL = -1
 LAMBDA_CE = 1
 RESTORE_FROM = './checkpoints50/'
+DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/dataSentinel2_64'
 
 def get_arguments():
   parser = argparse.ArgumentParser()
@@ -45,6 +46,7 @@ def get_arguments():
   parser.add_argument("--lambda-ce", type=float, default=LAMBDA_CE)
   parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                     help="Where restore model parameters from.")
+  parser.add_argument("--dataset-path", type=str, default=DATASET_PATH)
   return parser.parse_args()
 
 args = get_arguments()
@@ -215,7 +217,7 @@ def main():
   weights = (1/torch.log(1.02 + torch.tensor(p_class))).cuda()
 
   data_loader = sen2.__dict__["Sen2"]
-  data_path = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/dataSentinel2_64'
+  data_path = args.dataset_path
   train_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_train"], "train_sup")
   test_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_test"], "test")
 
