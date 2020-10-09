@@ -49,24 +49,24 @@ class Encoder(nn.Module):
         self.res_block9 = reslike_block(latent_dim, num_groups=8)
 
     def forward(self, x):
-        x = self.conv1(x)                                           # Output size: (1, 32, 160, 192, 128)
-        x = self.res_block1(x)                                      # Output size: (1, 32, 160, 192, 128)
-        x = self.conv_block1(x)                                     # Output size: (1, 64, 80, 96, 64)
-        x = self.res_block2(x)                                      # Output size: (1, 64, 80, 96, 64)
-        x = self.conv_block2(x)                                     # Output size: (1, 64, 80, 96, 64)
-        x = self.res_block3(x)                                      # Output size: (1, 64, 80, 96, 64)
-        x = self.conv_block3(x)                                     # Output size: (1, 128, 40, 48, 32)
-        x = self.res_block4(x)                                      # Output size: (1, 128, 40, 48, 32)
-        x = self.conv_block4(x)                                     # Output size: (1, 128, 40, 48, 32)
-        x = self.res_block5(x)                                      # Output size: (1, 128, 40, 48, 32)
-        x = self.conv_block5(x)                                     # Output size: (1, 256, 20, 24, 16)
-        x = self.res_block6(x)                                      # Output size: (1, 256, 20, 24, 16)
-        x = self.conv_block6(x)                                     # Output size: (1, 256, 20, 24, 16)
-        x = self.res_block7(x)                                      # Output size: (1, 256, 20, 24, 16)
-        x = self.conv_block7(x)                                     # Output size: (1, 256, 20, 24, 16)
-        x = self.res_block8(x)                                      # Output size: (1, 256, 20, 24, 16)
-        x = self.conv_block8(x)                                     # Output size: (1, 256, 20, 24, 16)
-        x = self.res_block9(x)                                      # Output size: (1, 256, 20, 24, 16)
+        x = self.conv1(x)                                           # Output size: (1, 32, 64, 64)
+        x = self.res_block1(x)                                      # Output size: (1, 32, 64, 64)
+        x = self.conv_block1(x)                                     # Output size: (1, 64, 32, 32)
+        x = self.res_block2(x)                                      # Output size: (1, 64, 32, 32)
+        x = self.conv_block2(x)                                     # Output size: (1, 64, 32, 32)
+        x = self.res_block3(x)                                      # Output size: (1, 64, 32, 32)
+        x = self.conv_block3(x)                                     # Output size: (1, 128, 16, 16)
+        x = self.res_block4(x)                                      # Output size: (1, 128, 16, 16)
+        x = self.conv_block4(x)                                     # Output size: (1, 128, 16, 16)
+        x = self.res_block5(x)                                      # Output size: (1, 128, 16, 16)
+        x = self.conv_block5(x)                                     # Output size: (1, 256, 8, 8)
+        x = self.res_block6(x)                                      # Output size: (1, 256, 8, 8)
+        x = self.conv_block6(x)                                     # Output size: (1, 256, 8, 8)
+        x = self.res_block7(x)                                      # Output size: (1, 256, 8, 8)
+        x = self.conv_block7(x)                                     # Output size: (1, 256, 8, 8)
+        x = self.res_block8(x)                                      # Output size: (1, 256, 8, 8)
+        x = self.conv_block8(x)                                     # Output size: (1, 256, 8, 8)
+        x = self.res_block9(x)                                      # Output size: (1, 256, 8, 8)
         return x
 
 class Decoder(nn.Module):
@@ -83,28 +83,16 @@ class Decoder(nn.Module):
         self.sigmoid1 = torch.nn.Sigmoid()
 
     def forward(self, x):
-        #print("-----decoder-----")
-        #print(x.shape)
-        x = self.upsize1(x)                                         # Output size: (1, 128, 40, 48, 32)
-        x = x + hooks.stored[2]                                     # Output size: (1, 128, 40, 48, 32)
-        #print(x.shape)
-        x = self.reslike1(x)                                        # Output size: (1, 128, 40, 48, 32)
-        #print(x.shape)
-        x = self.upsize2(x)                                         # Output size: (1, 64, 80, 96, 64)
-        #print(x.shape)
-        x = x + hooks.stored[1]                                     # Output size: (1, 64, 80, 96, 64)
-        #print(x.shape)
-        x = self.reslike2(x)                                        # Output size: (1, 64, 80, 96, 64)
-        #print(x.shape)
-        x = self.upsize3(x)                                         # Output size: (1, 32, 160, 192, 128)
-        #print(x.shape)
-        x = x + hooks.stored[0]                                     # Output size: (1, 32, 160, 192, 128)
-        x = self.reslike3(x)                                        # Output size: (1, 32, 160, 192, 128)
-        #print(x.shape)
-        x = self.conv1(x)                                           # Output size: (1, 3, 160, 192, 128)
-        #print(x.shape)
-        #x = self.sigmoid1(x)                                        # Output size: (1, 3, 160, 192, 128)
-        #print(x.shape)
+        x = self.upsize1(x)                                         # Output size: (1, 128, 16, 16)
+        x = x + hooks.stored[2]                                     # Output size: (1, 128, 16, 16)
+        x = self.reslike1(x)                                        # Output size: (1, 128, 16, 16)
+        x = self.upsize2(x)                                         # Output size: (1, 64, 32, 32)
+        x = x + hooks.stored[1]                                     # Output size: (1, 64, 32, 32)
+        x = self.reslike2(x)                                        # Output size: (1, 64, 32, 32)
+        x = self.upsize3(x)                                         # Output size: (1, 32, 64, 64)
+        x = x + hooks.stored[0]                                     # Output size: (1, 32, 64, 64)
+        x = self.reslike3(x)                                        # Output size: (1, 32, 64, 64)
+        x = self.conv1(x)                                           # Output size: (1, 110, 64, 64)
         return x
 
 class DecoderSeg(nn.Module):
@@ -122,29 +110,17 @@ class DecoderSeg(nn.Module):
         self.sigmoid1 = torch.nn.Sigmoid()
 
     def forward(self, x):
-        #print("-----decoder-----")
-        #print(x.shape)
-        x = self.upsize1(x)                                         # Output size: (1, 128, 40, 48, 32)
-        x = x + hooks.stored[2]                                     # Output size: (1, 128, 40, 48, 32)
-        #print(x.shape)
-        x = self.reslike1(x)                                        # Output size: (1, 128, 40, 48, 32)
-        #print(x.shape)
-        x = self.upsize2(x)                                         # Output size: (1, 64, 80, 96, 64)
-        #print(x.shape)
-        x = x + hooks.stored[1]                                     # Output size: (1, 64, 80, 96, 64)
-        #print(x.shape)
-        x = self.reslike2(x)                                        # Output size: (1, 64, 80, 96, 64)
-        #print(x.shape)
-        x = self.upsize3(x)                                         # Output size: (1, 32, 160, 192, 128)
-        #print(x.shape)
-        x = x + hooks.stored[0]                                     # Output size: (1, 32, 160, 192, 128)
-        x = self.reslike3(x)                                        # Output size: (1, 32, 160, 192, 128)
-        #print(x.shape)
-        out_dec = self.convdec(x)                                           # Output size: (1, 3, 160, 192, 128)
-        out_seg = self.convseg(x)
-        #print(x.shape)
-        #x = self.sigmoid1(x)                                        # Output size: (1, 3, 160, 192, 128)
-        #print(x.shape)
+        x = self.upsize1(x)                                         # Output size: (1, 128, 16, 16)
+        x = x + hooks.stored[2]                                     # Output size: (1, 128, 16, 16)
+        x = self.reslike1(x)                                        # Output size: (1, 128, 16, 16)
+        x = self.upsize2(x)                                         # Output size: (1, 64, 32, 32)
+        x = x + hooks.stored[1]                                     # Output size: (1, 64, 32, 32)
+        x = self.reslike2(x)                                        # Output size: (1, 64, 32, 32)
+        x = self.upsize3(x)                                         # Output size: (1, 32, 64, 64)
+        x = x + hooks.stored[0]                                     # Output size: (1, 32, 64, 64)
+        x = self.reslike3(x)                                        # Output size: (1, 32, 64, 64)
+        out_dec = self.convdec(x)                                   # Output size: (1, 110, 64, 64)
+        out_seg = self.convseg(x)                                   # Output size: (1, 15, 64, 64)
         return out_dec, out_seg
 
 
@@ -156,7 +132,7 @@ class Autoencoder(nn.Module):
 
   def forward(self, input):
     interm_res = self.encoder(input)
-    top_res = self.decoder(interm_res)                               # Output size: (1, 3, 160, 192, 128)
+    top_res = self.decoder(interm_res)                               # Output size: (1, 110, 64, 64)
     return top_res
 
 class AutoSeg(nn.Module):
@@ -168,7 +144,7 @@ class AutoSeg(nn.Module):
 
   def forward(self, input):
     interm_res = self.encoder(input)
-    res_dec, res_seg = self.decoder(interm_res)                               # Output size: (1, 3, 160, 192, 128)
+    res_dec, res_seg = self.decoder(interm_res)                      # Output size: (1, 110, 64, 64), (1, 15, 64, 64)
     #res_seg = self.decoder_seg
     return res_dec, res_seg
 
