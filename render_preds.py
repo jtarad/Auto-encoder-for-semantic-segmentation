@@ -3,16 +3,15 @@ import torch
 import torch.nn as nn
 from torch.utils import data
 from torch.autograd import Variable
-from data import sen2
-from data import get_loader, get_data_path
+import sen2
 from PIL import Image
 import argparse
 import os
 import torch.nn.functional as F
 from torchsummary import summary
 from torch.utils.data import ConcatDataset
-from model.deeplabv2 import Res_Deeplab
-from utils.metric import _confusion_matrix, _acc
+import autoencoder as ae
+from metrics import _confusion_matrix, _acc
 
 input_size = (64,64)
 batch_size = 100
@@ -22,7 +21,8 @@ IM_SZ = 52
 overlap = 6
 OUT_DIR = './render/'
 OFF_SET = 210 - HEIGHT
-RESTORE_FROM = './checkpoints/sen2_64_fm_reg'
+RESTORE_FROM = './checkpoints/'
+DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/dataSentinel2_64'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -34,6 +34,7 @@ def get_arguments():
     parser.add_argument("--model-path", type=str, default=RESTORE_FROM)
     parser.add_argument("--out-dir", type=str, default=OUT_DIR)
     parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--dataset-path", type=str, default=DATASET_PATH)
     return parser.parse_args()
 
 def get_dataloader(data_loader, data_path, input_size, partitions, purpose):
@@ -70,8 +71,8 @@ def main():
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
 
-    data_loader = get_loader('sen2')
-    data_path = get_data_path('sen2')
+    data_loader = sen2.__dict__["Sen2"]
+    data_path = args.dataset_path
     dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_train"], "train")
     dataloader = data.DataLoader(dataset,
                     batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
