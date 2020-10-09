@@ -12,7 +12,6 @@ from loss import CrossEntropy2d
 from metric import _confusion_matrix, _acc, _cohen_kappa_score
 
 import autoencoder as ae
-#from modules.model import SoftDiceLoss, KLDivergence, L2Loss
 from sklearn import metrics
 import sen2
 from torchsummary import summary
@@ -190,7 +189,7 @@ def main():
   input_size = (h, w)
 
   #model = ae.autoencoder
-  model = ae.autoseg.cuda()
+  model = ae.autoencoder2heads.cuda()
   
   enc_path = os.path.join(args.restore_from, 'latest_encoder.pth')
   dec_path = os.path.join(args.restore_from, 'latest_decoder.pth')
@@ -240,7 +239,7 @@ def main():
 
   trainloader_iter = iter(trainloader)
 
-  optimizer = ae.optimizer_seg
+  optimizer = ae.optimizer_s2h
   optimizer.zero_grad()
 
   train_accs = []
@@ -282,7 +281,7 @@ def main():
 
       print('iter = {0:8d}/{1:8d}, loss = {2:.3f}'.format(i_iter, args.num_steps, loss_value))
 
-      # ----------EVALUATION-----------
+      # ==================save model===================
 
       if (i_iter % (num_batches_train-1) == 0) and (i_iter > 0) or (i_iter == args.num_steps-1):
           e_i += 1
