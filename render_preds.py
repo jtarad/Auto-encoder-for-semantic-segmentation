@@ -11,17 +11,16 @@ import torch.nn.functional as F
 from torchsummary import summary
 from torch.utils.data import ConcatDataset
 import autoencoder as ae
-from metrics import _confusion_matrix, _acc
 
 input_size = (64,64)
 batch_size = 100
-WIDTH = 182
-HEIGHT = 210
-IM_SZ = 52
+WIDTH = 148  #182
+HEIGHT = 171  #210
+IM_SZ = 64
 overlap = 6
 OUT_DIR = './render/'
-OFF_SET = 210 - HEIGHT
-RESTORE_FROM = './checkpoints/'
+OFF_SET = 171 - HEIGHT
+RESTORE_FROM = './checkpoints_2h/'
 DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/dataSentinel2_64'
 
 def get_arguments():
@@ -77,12 +76,16 @@ def main():
     dataloader = data.DataLoader(dataset,
                     batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
-    model = Res_Deeplab(num_classes=15)
-    model.cuda(gpu)
-
-    model = torch.nn.DataParallel(model).cuda()
-    saved_state_dict = torch.load(os.path.join(args.model_path, "best.pth"))
-    model.load_state_dict(saved_state_dict)
+    model = ae.autoencoder2heads.cuda()
+  
+    enc_path = os.path.join(args.model_path, 'latest_encoder.pth')
+    dec_path = os.path.join(args.model_path, 'latest_decoder.pth')
+    # load pretrained parameters
+    saved_state_dict_enc = torch.load(enc_path)
+    saved_state_dict_dec = torch.load(dec_path)
+  
+    model.encoder.load_state_dict(saved_state_dict_enc)
+    model.decoder.load_state_dict(saved_state_dict_dec)
 
     model.eval()
 
@@ -124,7 +127,7 @@ def main():
         imgs = Variable(imgs).cuda(gpu)
 
         with torch.no_grad():
-          x_outs_curr = F.interpolate(model(imgs), size=(input_size[0], input_size[1]), mode='bilinear', align_corners=True)
+          _, x_outs_curr = model(imgs)
         n, c, w, h = x_outs_curr.shape
 
         #actual_samples_curr = n * w * h
@@ -134,7 +137,7 @@ def main():
         num_samples_r += n
         preds_curr = torch.argmax(x_outs_curr, dim=1)
 
-        preds_all[start_r:(start_r + n), :, :] = preds_curr[:,overlap:-overlap,overlap:-overlap]
+        preds_all[start_r:(start_r + n), :, :] = preds_curr  #preds_curr[:,overlap:-overlap,overlap:-overlap]
 
         #flat_predss_all[start_i:(start_i + actual_samples_curr)] = preds_curr.view(-1)
         #flat_labels_all[start_i:(start_i + actual_samples_curr)] = labels.view(-1)
@@ -166,7 +169,7 @@ def main():
         if j+1 == HEIGHT:
           n += OFF_SET
 
-    Image.fromarray(img_preds).save(os.path.join(args.out_dir,'rend_s4GAN.png'))
+    Image.fromarray(img_preds).save(os.path.join(args.out_dir,'rend_ae2h.png'))
 
 if __name__ == '__main__':
     main()
