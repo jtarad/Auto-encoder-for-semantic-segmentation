@@ -38,7 +38,7 @@ class _Sen2(data.Dataset):
 
     self.preload = preload
     
-    self.part = "part50"
+    self.part = ""
 
     self.files = []
     self.images = []

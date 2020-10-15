@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.utils.data.sampler import SubsetRandomSampler
+from collections import OrderedDict
 
-from metric import _confusion_matrix, _acc, _cohen_kappa_score
+from metrics import _confusion_matrix, _acc, _cohen_kappa_score
 
 import autoencoder as ae
 from sklearn import metrics
@@ -18,13 +20,14 @@ from PIL import Image
 
 CHECKPOINT_DIR = './checkpoints/'
 NUM_STEPS = 40000
-BATCH_SIZE = 100
+BATCH_SIZE = 8
 NUM_CLASSES = 15
 INPUT_SIZE = '64,64'
-IGNORE_LABEL = -1
 LAMBDA_CE = 1
+SHUFFLE = True
+VAL_SPLIT = 0.2
 RESTORE_FROM = './checkpoints50/'
-DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/dataSentinel2_64'
+DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/smallSen2_64'
 
 def get_arguments():
   parser = argparse.ArgumentParser()
@@ -39,11 +42,11 @@ def get_arguments():
   parser.add_argument("--batch-size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step.")
   parser.add_argument("--input-size", type=str, default=INPUT_SIZE)
-  parser.add_argument("--ignore-label", type=float, default=IGNORE_LABEL,
-                    help="label value to ignored for loss calculation")
   parser.add_argument("--lambda-ce", type=float, default=LAMBDA_CE)
   parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                     help="Where restore model parameters from.")
+  parser.add_argument("--shuffle", type=bool, default=SHUFFLE)
+  parser.add_argument("--validation-split", type=float, default=VAL_SPLIT)
   parser.add_argument("--dataset-path", type=str, default=DATASET_PATH)
   return parser.parse_args()
 
@@ -72,7 +75,11 @@ def main():
   input_size = (h, w)
 
   #model = ae.autoencoder
-  model = ae.autoencoder2heads.cuda()
+  model = nn.Sequential(OrderedDict([
+          ('autoencoder', ae.autoencoder),
+          ('out_conv', nn.Conv2d(32, 110, 1))
+          ])).cuda()
+
   
   #enc_path = os.path.join(args.restore_from, 'latest_encoder.pth')
   #dec_path = os.path.join(args.restore_from, 'latest_decoder.pth')
@@ -93,30 +100,46 @@ def main():
 
   data_loader = sen2.__dict__["Sen2"]
   data_path = args.dataset_path
-  train_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_train"], "train")
-  test_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_test"], "test")
+  dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_train"], "train")
+  #test_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_test"], "test")
 
-  test_dataset_size = len(test_dataset)
-  num_batches_test = int(test_dataset_size / args.batch_size) + 1
+  #test_dataset_size = len(test_dataset)
+  #num_batches_test = int(test_dataset_size / args.batch_size) + 1
 
-  train_dataset_size = len(train_dataset)
-  num_batches_train = int(train_dataset_size / args.batch_size) + 1
-  last_batch_sz = train_dataset_size % args.batch_size
-  
-  print('num batches test : ', num_batches_test)
+  dataset_size = len(dataset)
+  num_batches_train = int((1-args.validation_split) * dataset_size / args.batch_size) + 1
+  num_batches_test = int(args.validation_split * dataset_size / args.batch_size) + 1
+  last_batch_sz = (args.validation_split * dataset_size) % args.batch_size
+
+  indices = list(range(dataset_size))
+  split = int(np.floor(args.validation_split * dataset_size))
+  if args.shuffle :
+      #np.random.seed(random_seed)
+      np.random.shuffle(indices)
+  train_indices, val_indices = indices[split:], indices[:split]
+
+  print('num batches val : ', num_batches_test)
   print('num batches train : ', num_batches_train)
   print('last batch size : ', last_batch_sz)
-  
-  trainloader = data.DataLoader(train_dataset,
-                  batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-  testloader = data.DataLoader(test_dataset,
-                  batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+  # Creating PT data samplers and loaders:
+  train_sampler = SubsetRandomSampler(train_indices)
+  test_sampler = SubsetRandomSampler(val_indices)
+
+  trainloader = data.DataLoader(dataset,
+                  batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
+  testloader = data.DataLoader(dataset,
+                  batch_size=args.batch_size, sampler=test_sampler, num_workers=4, pin_memory=True)
+  #trainloader = data.DataLoader(train_dataset,
+  #                batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+
+  #testloader = data.DataLoader(test_dataset,
+  #                batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
   trainloader_iter = iter(trainloader)
   testloader_iter = iter(testloader)
 
-  optimizer = ae.optimizer_s2h
+  optimizer = ae.optimizer_ae
   optimizer.zero_grad()
 
   losses = []
@@ -185,8 +208,8 @@ def main():
 
           if (e_i % 10 == 0) or (i_iter == args.num_steps-1):
             print ('save model ...')
-            torch.save(model.encoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_encoder.pth'))
-            torch.save(model.decoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_decoder.pth'))
+            torch.save(model[0].encoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_encoder.pth'))
+            torch.save(model[0].decoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_decoder.pth'))
             #break
 
 

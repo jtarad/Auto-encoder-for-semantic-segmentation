@@ -79,7 +79,6 @@ class Decoder(nn.Module):
         self.reslike2 = reslike_block(64, num_groups=8)
         self.upsize3 = upsize(64, 32)
         self.reslike3 = reslike_block(32, num_groups=8)
-        self.conv1 = nn.Conv2d(32, 110, 1) 
         self.sigmoid1 = torch.nn.Sigmoid()
 
     def forward(self, x):
@@ -92,35 +91,7 @@ class Decoder(nn.Module):
         x = self.upsize3(x)                                         # Output size: (1, 32, 64, 64)
         x = x + hooks_ae.stored[0]                                  # Output size: (1, 32, 64, 64)
         x = self.reslike3(x)                                        # Output size: (1, 32, 64, 64)
-        x = self.conv1(x)                                           # Output size: (1, 110, 64, 64)
         return x
-
-class DecoderSeg(nn.Module):
-    "Decoder Part"
-    def __init__(self):
-        super().__init__()
-        self.upsize1 = upsize(256, 128)
-        self.reslike1 = reslike_block(128, num_groups=8)
-        self.upsize2 = upsize(128, 64)
-        self.reslike2 = reslike_block(64, num_groups=8)
-        self.upsize3 = upsize(64, 32)
-        self.reslike3 = reslike_block(32, num_groups=8)
-        self.convdec = nn.Conv2d(32, 110, 1) 
-        self.convseg = nn.Conv2d(32, 15, 1)
-        self.sigmoid1 = torch.nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.upsize1(x)                                         # Output size: (1, 128, 16, 16)
-        x = x + hooks_seg.stored[2]                                 # Output size: (1, 128, 16, 16)
-        x = self.reslike1(x)                                        # Output size: (1, 128, 16, 16)
-        x = self.upsize2(x)                                         # Output size: (1, 64, 32, 32)
-        x = x + hooks_seg.stored[1]                                 # Output size: (1, 64, 32, 32)
-        x = self.reslike2(x)                                        # Output size: (1, 64, 32, 32)
-        x = self.upsize3(x)                                         # Output size: (1, 32, 64, 64)
-        x = x + hooks_seg.stored[0]                                 # Output size: (1, 32, 64, 64)
-        x = self.reslike3(x)                                        # Output size: (1, 32, 64, 64)
-        out_seg = self.convseg(x)                                   # Output size: (1, 15, 64, 64)
-        return out_seg
 
 class DecoderTwoHead(nn.Module):
     "Decoder Part"
@@ -138,13 +109,13 @@ class DecoderTwoHead(nn.Module):
 
     def forward(self, x):
         x = self.upsize1(x)                                         # Output size: (1, 128, 16, 16)
-        x = x + hooks_2h.stored[2]                                 # Output size: (1, 128, 16, 16)
+        x = x + hooks_2h.stored[2]                                  # Output size: (1, 128, 16, 16)
         x = self.reslike1(x)                                        # Output size: (1, 128, 16, 16)
         x = self.upsize2(x)                                         # Output size: (1, 64, 32, 32)
-        x = x + hooks_2h.stored[1]                                 # Output size: (1, 64, 32, 32)
+        x = x + hooks_2h.stored[1]                                  # Output size: (1, 64, 32, 32)
         x = self.reslike2(x)                                        # Output size: (1, 64, 32, 32)
         x = self.upsize3(x)                                         # Output size: (1, 32, 64, 64)
-        x = x + hooks_2h.stored[0]                                 # Output size: (1, 32, 64, 64)
+        x = x + hooks_2h.stored[0]                                  # Output size: (1, 32, 64, 64)
         x = self.reslike3(x)                                        # Output size: (1, 32, 64, 64)
         out_dec = self.convdec(x)                                   # Output size: (1, 110, 64, 64)
         out_seg = self.convseg(x)                                   # Output size: (1, 15, 64, 64)
@@ -158,11 +129,11 @@ class Autoencoder(nn.Module):
     self.decoder = Decoder()
 
   def forward(self, input):
-    interm_res = self.encoder(input)
-    top_res = self.decoder(interm_res)                               # Output size: (1, 110, 64, 64)
-    return top_res
+    x = self.encoder(input)
+    x = self.decoder(x)
+    return x
 
-class AutoEncoderTwoHeads(nn.Module):
+class AutoencoderTwoHeads(nn.Module):
   def __init__(self):
     super().__init__()
     self.encoder = Encoder(latent_dim=256)
@@ -173,26 +144,11 @@ class AutoEncoderTwoHeads(nn.Module):
     res_dec, res_seg = self.decoder(interm_res)                      # Output size: (1, 110, 64, 64), (1, 15, 64, 64)
     return res_dec, res_seg
 
-class AutoSeg(nn.Module):
-  def __init__(self):
-    super().__init__()
-    self.encoder = Encoder(latent_dim=256)
-    self.decoder = DecoderSeg()
-
-  def forward(self, input):
-    interm_res = self.encoder(input)
-    res_seg = self.decoder(interm_res)                                # Output size: (1, 15, 64, 64)
-    return res_seg
-
 autoencoder = Autoencoder().cuda()
-autoencoder2heads = AutoencoderTwhoHeads().cuda()
-autoseg = AutoSeg().cuda()
+autoencoder2heads = AutoencoderTwoHeads().cuda()
 
-
-ms_seg = [autoseg.encoder.res_block1, 
-          autoseg.encoder.res_block3, 
-          autoseg.encoder.res_block5]
-hooks_seg = hook_outputs(ms_seg, detach=False, grad=False)
+convdec = nn.Conv2d(32, 110, 1)                                      # Output size: (1, 110, 64, 64)
+convseg = nn.Conv2d(32, 15, 1)                                       # Output size: (1, 15, 64, 64)
 
 ms_ae = [autoencoder.encoder.res_block1, 
          autoencoder.encoder.res_block3, 
@@ -206,5 +162,4 @@ hooks_2h = hook_outputs(ms_2h, detach=False, grad=False)
 
 lr = 1e-4
 optimizer_ae = optim.Adam(autoencoder.parameters(), lr)
-optimizer_seg = optim.Adam(autoseg.parameters(), lr)
 optimizer_2h = optim.Adam(autoencoder2heads.parameters(), lr)
