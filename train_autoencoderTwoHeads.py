@@ -50,7 +50,7 @@ def get_arguments():
 
 args = get_arguments()
 
-def get_dataloader(data_loader, data_path, input_size, partitions, purpose):
+def get_dataloader(data_loader, data_path, input_size, partitions, purpose, part=""):
     imgs_list = []
     for partition in partitions:
         imgs_curr = data_loader(
@@ -58,7 +58,8 @@ def get_dataloader(data_loader, data_path, input_size, partitions, purpose):
                "input_sz": input_size[0],
                "gt_k": 15,
                "split": partition,
-               "purpose": purpose}  # return testing tuples, image and label
+               "purpose": purpose,
+               "partition": part}  # return testing tuples, image and label
         )
         imgs_list.append(imgs_curr)
 

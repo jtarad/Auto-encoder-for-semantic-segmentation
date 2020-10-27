@@ -25,7 +25,7 @@ class _Sen2(data.Dataset):
 
   """
 
-  def __init__(self, dataset_root, input_sz, gt_k, split=None, purpose=None, preload=False):
+  def __init__(self, dataset_root, input_sz, gt_k, partition, split=None, purpose=None, preload=False):
     super(_Sen2, self).__init__()
 
     self.split = split
@@ -38,7 +38,7 @@ class _Sen2(data.Dataset):
 
     self.preload = preload
     
-    self.part = ""
+    self.part = partition
 
     self.files = []
     self.images = []

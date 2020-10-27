@@ -20,14 +20,14 @@ import sen2
 from torchsummary import summary
 from PIL import Image
 
-CHECKPOINT_DIR = './checkpoints_ft/'
-NUM_STEPS = 100
-BATCH_SIZE = 8
+CHECKPOINT_DIR = './checkpoints_10/'
+NUM_STEPS = 40000
+BATCH_SIZE = 100
 NUM_CLASSES = 15
 INPUT_SIZE = '64,64'
 IGNORE_LABEL = -1
-RESTORE_FROM = './checkpoints/'
-DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/smallSen2_64'
+RESTORE_FROM = './checkpoints_ae/'
+DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/dataSentinel2_64'
 
 def get_arguments():
   parser = argparse.ArgumentParser()
@@ -51,15 +51,16 @@ def get_arguments():
 
 args = get_arguments()
 
-def get_dataloader(data_loader, data_path, input_size, partitions, purpose):
+def get_dataloader(data_loader, data_path, input_size, splits, purpose, part=""):
     imgs_list = []
-    for partition in partitions:
+    for split in splits:
         imgs_curr = data_loader(
             **{"dataset_root": data_path,
                "input_sz": input_size[0],
                "gt_k": 15,
-               "split": partition,
-               "purpose": purpose}  # return testing tuples, image and label
+               "split": split,
+               "purpose": purpose,
+               "partition": part}  # return testing tuples, image and label
         )
         imgs_list.append(imgs_curr)
 
@@ -192,7 +193,7 @@ def main():
 
   data_loader = sen2.__dict__["Sen2"]
   data_path = args.dataset_path
-  train_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_train"], "train_sup")
+  train_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_train"], "train_sup", "part10")
   test_dataset = get_dataloader(data_loader, data_path, input_size, ["labelled_test"], "test")
 
   test_dataset_size = len(test_dataset)
@@ -246,7 +247,7 @@ def main():
 
       loss_value += loss.item()
 
-      print('iter = {0:8d}/{1:8d}, loss = {2:.3f}'.format(i_iter, args.num_steps, loss_value))
+      print('iter = {0:8d}/{1:8d}, loss = {2:.3f}'.format(i_iter, args.num_steps, loss.item()))
 
       # ----------EVALUATION-----------
 

@@ -18,16 +18,16 @@ import sen2
 from torchsummary import summary
 from PIL import Image
 
-CHECKPOINT_DIR = './checkpoints/'
+CHECKPOINT_DIR = './checkpoints_ae/'
 NUM_STEPS = 40000
-BATCH_SIZE = 8
+BATCH_SIZE = 100
 NUM_CLASSES = 15
 INPUT_SIZE = '64,64'
 LAMBDA_CE = 1
 SHUFFLE = True
 VAL_SPLIT = 0.2
 RESTORE_FROM = './checkpoints50/'
-DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/smallSen2_64'
+DATASET_PATH = '/work/stages/taradel/data/S2_10_bandes_11_mois_avec_annotations/T31TDJ/dataSentinel2_64'
 
 def get_arguments():
   parser = argparse.ArgumentParser()
@@ -52,7 +52,7 @@ def get_arguments():
 
 args = get_arguments()
 
-def get_dataloader(data_loader, data_path, input_size, partitions, purpose):
+def get_dataloader(data_loader, data_path, input_size, partitions, purpose, part=""):
     imgs_list = []
     for partition in partitions:
         imgs_curr = data_loader(
@@ -60,7 +60,8 @@ def get_dataloader(data_loader, data_path, input_size, partitions, purpose):
                "input_sz": input_size[0],
                "gt_k": 15,
                "split": partition,
-               "purpose": purpose}  # return testing tuples, image and label
+               "purpose": purpose,
+               "partition": part}  # return testing tuples, image and label
         )
         imgs_list.append(imgs_curr)
 
@@ -107,29 +108,26 @@ def main():
   #num_batches_test = int(test_dataset_size / args.batch_size) + 1
 
   dataset_size = len(dataset)
-  num_batches_train = int((1-args.validation_split) * dataset_size / args.batch_size) + 1
-  num_batches_test = int(args.validation_split * dataset_size / args.batch_size) + 1
-  last_batch_sz = (args.validation_split * dataset_size) % args.batch_size
+  num_batches_train = int(dataset_size / args.batch_size) + 1
 
-  indices = list(range(dataset_size))
-  split = int(np.floor(args.validation_split * dataset_size))
-  if args.shuffle :
+  #indices = list(range(dataset_size))
+  #split = int(np.floor(args.validation_split * dataset_size))
+  #if args.shuffle :
       #np.random.seed(random_seed)
-      np.random.shuffle(indices)
-  train_indices, val_indices = indices[split:], indices[:split]
+  #    np.random.shuffle(indices)
+  #train_indices, val_indices = indices[split:], indices[:split]
 
-  print('num batches val : ', num_batches_test)
+  #print('num batches val : ', num_batches_test)
   print('num batches train : ', num_batches_train)
-  print('last batch size : ', last_batch_sz)
 
   # Creating PT data samplers and loaders:
-  train_sampler = SubsetRandomSampler(train_indices)
-  test_sampler = SubsetRandomSampler(val_indices)
+  #train_sampler = SubsetRandomSampler(train_indices)
+  #test_sampler = SubsetRandomSampler(val_indices)
 
   trainloader = data.DataLoader(dataset,
-                  batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
-  testloader = data.DataLoader(dataset,
-                  batch_size=args.batch_size, sampler=test_sampler, num_workers=4, pin_memory=True)
+                  batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+  #testloader = data.DataLoader(dataset,
+  #                batch_size=args.batch_size, sampler=test_sampler, num_workers=4, pin_memory=True)
   #trainloader = data.DataLoader(train_dataset,
   #                batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
@@ -137,7 +135,7 @@ def main():
   #                batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
   trainloader_iter = iter(trainloader)
-  testloader_iter = iter(testloader)
+  #testloader_iter = iter(testloader)
 
   optimizer = ae.optimizer_ae
   optimizer.zero_grad()
@@ -170,46 +168,45 @@ def main():
       loss_value += loss.item()
 
       # ==================validation===================
-      try:
-          batch = next(testloader_iter)
-      except:
-          print("end epoch %s" % e_i)
-          testloader_iter = iter(testloader)
-          batch = next(testloader_iter)
-      img_val = batch
-      img_val = img_val.cuda()
-      with torch.no_grad():
-        out = model(img_val)
-      loss_val = criterion(out, img_val)
-      loss_val_value += loss_val.item()
+      #try:
+      #    batch = next(testloader_iter)
+      #except:
+      #    testloader_iter = iter(testloader)
+      #    batch = next(testloader_iter)
+      #img_val = batch
+      #img_val = img_val.cuda()
+      #with torch.no_grad():
+      #  out = model(img_val)
+      #loss_val = criterion(out, img_val)
+      #loss_val_value += loss_val.item()
 
       print('iter = {0:8d}/{1:8d}, loss = {2:.3f}'.format(i_iter, args.num_steps, loss_value))
 
       # ==================save model===================
 
-      if (i_iter % (num_batches_train-1) == 0) and (i_iter > 0) or (i_iter == args.num_steps-1):
+      if (i_iter % (num_batches_train-1) == 0) or (i_iter == args.num_steps-1):
           e_i += 1
 
           avg_loss = loss_value / num_batches_train
-          avg_loss_val = loss_val_value / num_batches_test
+          #avg_loss_val = loss_val_value / num_batches_test
 
           loss_value = 0
 
           losses.append(avg_loss)
-          losses_val.append(avg_loss_val)
+          #losses_val.append(avg_loss_val)
 
           axarr.clear()
           axarr.plot(losses, 'b')
-          axarr.plot(losses_val, 'm')
+          #axarr.plot(losses_val, 'm')
           axarr.set_title("MSE loss")      
 
           fig.canvas.draw_idle()
           fig.savefig(os.path.join(args.checkpoint_dir, "plots.png"))
 
-          if (e_i % 10 == 0) or (i_iter == args.num_steps-1):
-            print ('save model ...')
-            torch.save(model[0].encoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_encoder.pth'))
-            torch.save(model[0].decoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_decoder.pth'))
+          #if (e_i % 10 == 0) or (i_iter == args.num_steps-1):
+          print ('save model ...')
+          torch.save(model[0].encoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_encoder.pth'))
+          torch.save(model[0].decoder.state_dict(),os.path.join(args.checkpoint_dir, 'latest_decoder.pth'))
             #break
 
 
